@@ -157,7 +157,7 @@ pipeline {
                 stage('prod Cast Service') {
                     steps {  
                                 timeout(time: 15, unit:"MINUTES"){
-                                    imput message : 'voulez-vous déployer Cast Service en prod ?', ok:'Oui'
+                                    input message : 'voulez-vous déployer Cast Service en prod ?', ok:'Oui'
                             }
                         script {
                             withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
