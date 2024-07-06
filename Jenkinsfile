@@ -94,16 +94,16 @@ pipeline {
                     sh 'cp $KUBECONFIG $HOME/.kube/config'
 
                     // Deploy Cast Service
-                    deployToKubernetes('cast-service', 'DEV')
-                    deployToKubernetes('cast-service', 'QA')
-                    deployToKubernetes('cast-service', 'STAGING')
-                    deployToKubernetes('cast-service', 'PROD')
+                    deployToKubernetes('cast-service', 'dev')
+                    deployToKubernetes('cast-service', 'qa')
+                    deployToKubernetes('cast-service', 'staging')
+                    deployToKubernetes('cast-service', 'prod')
 
                     // Deploy Movie Service
-                    deployToKubernetes('movie-service', 'DEV')
-                    deployToKubernetes('movie-service', 'QA')
-                    deployToKubernetes('movie-service', 'STAGING')
-                    deployToKubernetes('movie-service', 'PROD')
+                    deployToKubernetes('movie-service', 'dev')
+                    deployToKubernetes('movie-service', 'qa')
+                    deployToKubernetes('movie-service', 'staging')
+                    deployToKubernetes('movie-service', 'prod')
                 }
             }
         }
