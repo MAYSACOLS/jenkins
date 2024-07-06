@@ -25,7 +25,7 @@ pipeline {
             }
         }
 
-    stage('Run Docker Images') {
+        stage('Run Docker Images') {
             parallel {
                 stage('Run Cast Service') {
                     steps {
@@ -48,7 +48,7 @@ pipeline {
             }
         }
 
- stage('Test Acceptance') {
+        stage('Test Acceptance') {
             parallel {
                 stage('Test Cast Service') {
                     steps {
@@ -86,24 +86,124 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes') {
-            steps {
-                script {
-                    // Setup kubeconfig
-                    sh 'mkdir -p $HOME/.kube'
-                    sh 'cp $KUBECONFIG $HOME/.kube/config'
+        stage('Deploy to Kubernetes in dev') {
+            parallel {
+                stage('Deploy Dev Kubernetes Cast Service') {
+                    steps {
+                        script {
+                            // Setup kubeconfig
+                            sh 'mkdir -p $HOME/.kube'
+                            sh 'cp $KUBECONFIG $HOME/.kube/config'
 
-                    // Deploy Cast Service
-                    deployToKubernetes('cast-service', 'dev')
-                    deployToKubernetes('cast-service', 'qa')
-                    deployToKubernetes('cast-service', 'staging')
-                    deployToKubernetes('cast-service', 'prod')
+                            // Deploy Cast Service
+                            deployToKubernetes('cast-service', 'dev')
+                        }
+                    }
+                }
+                stage('Deploy Dev Kubernetes Movie Service') {
+                    steps {
+                        script {
+                            // Setup kubeconfig
+                            sh 'mkdir -p $HOME/.kube'
+                            sh 'cp $KUBECONFIG $HOME/.kube/config'
 
-                    // Deploy Movie Service
-                    deployToKubernetes('movie-service', 'dev')
-                    deployToKubernetes('movie-service', 'qa')
-                    deployToKubernetes('movie-service', 'staging')
-                    deployToKubernetes('movie-service', 'prod')
+                            // Deploy Movie Service
+                            deployToKubernetes('movie-service', 'dev')
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes in qa') {
+            parallel {
+                stage('Deploy qa Kubernetes Cast Service') {
+                    steps {
+                        script {
+                            // Setup kubeconfig
+                            sh 'mkdir -p $HOME/.kube'
+                            sh 'cp $KUBECONFIG $HOME/.kube/config'
+
+                            // Deploy Cast Service
+                            deployToKubernetes('cast-service', 'qa')
+                        }
+                    }
+                }
+                stage('Deploy qa Kubernetes Movie Service') {
+                    steps {
+                        script {
+                            // Setup kubeconfig
+                            sh 'mkdir -p $HOME/.kube'
+                            sh 'cp $KUBECONFIG $HOME/.kube/config'
+
+                            // Deploy Movie Service
+                            deployToKubernetes('movie-service', 'qa')
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes in staging') {
+            parallel {
+                stage('Deploy staging Kubernetes Cast Service') {
+                    steps {
+                        script {
+                            // Setup kubeconfig
+                            sh 'mkdir -p $HOME/.kube'
+                            sh 'cp $KUBECONFIG $HOME/.kube/config'
+
+                            // Deploy Cast Service
+                            deployToKubernetes('cast-service', 'staging')
+                        }
+                    }
+                }
+                stage('Deploy staging Kubernetes Movie Service') {
+                    steps {
+                        script {
+                            // Setup kubeconfig
+                            sh 'mkdir -p $HOME/.kube'
+                            sh 'cp $KUBECONFIG $HOME/.kube/config'
+
+                            // Deploy Movie Service
+                            deployToKubernetes('movie-service', 'staging')
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes in prod') {
+            parallel {
+                stage('Deploy prod Kubernetes Cast Service') {
+                    steps {
+                        timeout(time: 15, unit: "MINUTES") {
+                            input message: 'Voulez-vous déployer en prod ?', ok: 'Yes'
+                        }
+                        script {
+                            // Setup kubeconfig
+                            sh 'mkdir -p $HOME/.kube'
+                            sh 'cp $KUBECONFIG $HOME/.kube/config'
+
+                            // Deploy Cast Service
+                            deployToKubernetes('cast-service', 'prod')
+                        }
+                    }
+                }
+                stage('Deploy prod Kubernetes Movie Service') {
+                    steps {
+                        timeout(time: 15, unit: "MINUTES") {
+                            input message: 'Voulez-vous déployer en prod ?', ok: 'Yes'
+                        }
+                        script {
+                            // Setup kubeconfig
+                            sh 'mkdir -p $HOME/.kube'
+                            sh 'cp $KUBECONFIG $HOME/.kube/config'
+
+                            // Deploy Movie Service
+                            deployToKubernetes('movie-service', 'prod')
+                        }
+                    }
                 }
             }
         }
@@ -164,11 +264,9 @@ def deployToKubernetes(MicroService, environment) {
     sh """
     rm -Rf .kube
     mkdir .kube
-    ls
     cat $KUBECONFIG > .kube/config
     cp fastapi/values.yaml values.yml
-    cat values.yml
     sed -i "s+tag.*+tag: ${DOCKER_TAG}+g" values.yml
     helm upgrade --install app ./fastapi --values=values.yml --namespace ${environment}
-      """
+    """
 }
