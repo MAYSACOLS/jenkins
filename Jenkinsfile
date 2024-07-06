@@ -1,7 +1,7 @@
 pipeline {
     environment {
         DOCKER_ID = "maysa56" // Remplacez par votre ID Docker Hub
-        DOCKER_PWD = credentials("DOCKER_HUB_PWD") // On récupère le mot de passe Docker Hub à partir du secret texte appelé docker_hub_pass enregistré dans Jenkins
+        DOCKER_PWD = credentials("DOCKER_HUB_PWD") // Récupération du mot de passe Docker Hub
     }
     agent any
 
@@ -49,14 +49,18 @@ pipeline {
                 stage('Run Cast Service') {
                     steps {
                         script {
-                            runDockerImage("cast-service", 8081)
+                            def serviceName = "cast-service"
+                            def port = 8081
+                            buildAndRunDockerImage(serviceName, port)
                         }
                     }
                 }
                 stage('Run Movie Service') {
                     steps {
                         script {
-                            runDockerImage("movie-service", 8082)
+                            def serviceName = "movie-service"
+                            def port = 8082
+                            buildAndRunDockerImage(serviceName, port)
                         }
                     }
                 }
@@ -134,18 +138,21 @@ def pushDockerImage(MicroService) {
     """
 }
 
-def runDockerImage(MicroService, port) {
+def buildAndRunDockerImage(MicroService, port) {
     def DOCKER_IMAGE = "examjenkinsdst"
     def DOCKER_TAG = "${MicroService}-v.${env.BUILD_ID}.0"
 
     sh """
     docker rm -f ${MicroService} || true
+    docker build -t $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG ./$MicroService
     docker run -d -p ${port}:80 --name ${MicroService} $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
+    sleep 10
     """
 }
 
 def testDockerImage(port) {
     sh """
+    sleep 10
     curl -f http://localhost:${port}
     """
 }
