@@ -31,18 +31,14 @@ pipeline {
                 stage('Run Cast Service') {
                     steps {
                         script {
-                            def serviceName = "cast-service"
-                            def port = 8081
-                            buildAndRunDockerImage(serviceName, port)
+                            buildAndRunDockerImage("cast-service", 8081)
                         }
                     }
                 }
                 stage('Run Movie Service') {
                     steps {
                         script {
-                            def serviceName = "movie-service"
-                            def port = 8082
-                            buildAndRunDockerImage(serviceName, port)
+                            buildAndRunDockerImage("movie-service", 8082)
                         }
                     }
                 }
@@ -54,14 +50,14 @@ pipeline {
                 stage('Test Cast Service') {
                     steps {
                         script {
-                            echo 'test Cast Service'
+                            echo 'Testing Cast Service'
                         }
                     }
                 }
                 stage('Test Movie Service') {
                     steps {
                         script {
-                            echo 'test Movie Service'
+                            echo 'Testing Movie Service'
                         }
                     }
                 }
@@ -89,107 +85,83 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             parallel {
-                stage('Deploy Dev Kubernetes') {
+                stage('Deploy Dev Cast Service') {
                     steps {
-                        parallel {
-                            stage('Deploy Dev Cast Service') {
-                                steps {
-                                    script {
-                                        withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
-                                            deployToKubernetes('cast-service', 'dev')
-                                        }
-                                    }
-                                }
+                        script {
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('cast-service', 'dev')
                             }
-                            stage('Deploy Dev Movie Service') {
-                                steps {
-                                    script {
-                                        withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
-                                            deployToKubernetes('movie-service', 'dev')
-                                        }
-                                    }
-                                }
+                        }
+                    }
+                }
+                stage('Deploy Dev Movie Service') {
+                    steps {
+                        script {
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('movie-service', 'dev')
                             }
                         }
                     }
                 }
 
-                stage('Deploy QA Kubernetes') {
+                stage('Deploy QA Cast Service') {
                     steps {
-                        parallel {
-                            stage('Deploy QA Cast Service') {
-                                steps {
-                                    script {
-                                        withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
-                                            deployToKubernetes('cast-service', 'qa')
-                                        }
-                                    }
-                                }
+                        script {
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('cast-service', 'qa')
                             }
-                            stage('Deploy QA Movie Service') {
-                                steps {
-                                    script {
-                                        withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
-                                            deployToKubernetes('movie-service', 'qa')
-                                        }
-                                    }
-                                }
+                        }
+                    }
+                }
+                stage('Deploy QA Movie Service') {
+                    steps {
+                        script {
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('movie-service', 'qa')
                             }
                         }
                     }
                 }
 
-                stage('Deploy Staging Kubernetes') {
+                stage('Deploy Staging Cast Service') {
                     steps {
-                        parallel {
-                            stage('Deploy Staging Cast Service') {
-                                steps {
-                                    script {
-                                        withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
-                                            deployToKubernetes('cast-service', 'staging')
-                                        }
-                                    }
-                                }
+                        script {
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('cast-service', 'staging')
                             }
-                            stage('Deploy Staging Movie Service') {
-                                steps {
-                                    script {
-                                        withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
-                                            deployToKubernetes('movie-service', 'staging')
-                                        }
-                                    }
-                                }
+                        }
+                    }
+                }
+                stage('Deploy Staging Movie Service') {
+                    steps {
+                        script {
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('movie-service', 'staging')
                             }
                         }
                     }
                 }
 
-                stage('Deploy Prod Kubernetes') {
+                stage('Deploy Prod Cast Service') {
                     steps {
-                        parallel {
-                            stage('Deploy Prod Cast Service') {
-                                steps {
-                                    timeout(time: 15, unit: "MINUTES") {
-                                        input message: 'Do you want to deploy to prod?', ok: 'Yes'
-                                    }
-                                    script {
-                                        withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
-                                            deployToKubernetes('cast-service', 'prod')
-                                        }
-                                    }
-                                }
+                        timeout(time: 15, unit: "MINUTES") {
+                            input message: 'Do you want to deploy to prod?', ok: 'Yes'
+                        }
+                        script {
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('cast-service', 'prod')
                             }
-                            stage('Deploy Prod Movie Service') {
-                                steps {
-                                    timeout(time: 15, unit: "MINUTES") {
-                                        input message: 'Do you want to deploy to prod?', ok: 'Yes'
-                                    }
-                                    script {
-                                        withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
-                                            deployToKubernetes('movie-service', 'prod')
-                                        }
-                                    }
-                                }
+                        }
+                    }
+                }
+                stage('Deploy Prod Movie Service') {
+                    steps {
+                        timeout(time: 15, unit: "MINUTES") {
+                            input message: 'Do you want to deploy to prod?', ok: 'Yes'
+                        }
+                        script {
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('movie-service', 'prod')
                             }
                         }
                     }
