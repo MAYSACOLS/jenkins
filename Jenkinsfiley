@@ -68,14 +68,14 @@ pipeline {
                 stage('Test Cast Service') {
                     steps {
                         script {
-                            testDockerImage(8081)
+                            testDockerImage("cast-service",8081)' // Port spécifique pour cast-service
                         }
                     }
                 }
                 stage('Test Movie Service') {
                     steps {
                         script {
-                            testDockerImage(8081)    
+                            testDockerImage("movie-service",8081)' // Port spécifique pour movie-service
                         }
                     }
                 }
@@ -154,13 +154,5 @@ def deployToKubernetes(MicroService, environment) {
     cp exam/values.yaml values.yaml
     sed -i 's/tag:.*/tag: v.${env.BUILD_ID}.0/' values.yaml
     helm upgrade --install ${MicroService} ./${MicroService}/chart --values=values.yaml --namespace ${environment}
-    """
-}
-def testDockerImage( port) {
-   
-    // Run the specific service
-    sh """
-    curl http://localhost:${port}
-   
     """
 }
