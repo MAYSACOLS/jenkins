@@ -63,24 +63,24 @@ pipeline {
             }
         }
 
-	# stage('Test Acceptance') {
-         #   parallel {
-          #      stage('Test Cast Service') {
-           #         steps {
-            #            script {
-             #               testDockerImage(8081)
-              #          }
-               #     }
-              #  }
-               # stage('Test Movie Service') {
-                #    steps {
-                 #       script {
-                  #          testDockerImage(8081)    
-                   #     }
-                   # }
-               # }
-            #}
-       # }
+        stage('Test Acceptance') {
+            parallel {
+                stage('Test Cast Service') {
+                    steps {
+                        script {
+                            testDockerImage(8081)
+                        }
+                    }
+                }
+                stage('Test Movie Service') {
+                    steps {
+                        script {
+                            testDockerImage(8082)
+                        }
+                    }
+                }
+            }
+        }
 
         stage('Deploy to Kubernetes') {
             steps {
@@ -129,9 +129,8 @@ def pushDockerImage(MicroService) {
     def DOCKER_TAG = "${MicroService}-v.${env.BUILD_ID}.0"
 
     sh """
-   
-   echo "$DOCKER_PWD" | docker login -u "$DOCKER_ID" --password-stdin
-   docker push $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
+    echo "$DOCKER_PWD" | docker login -u "$DOCKER_ID" --password-stdin
+    docker push $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
     """
 }
 
@@ -146,6 +145,13 @@ def runDockerImage(MicroService, port) {
     """
 }
 
+def testDockerImage(port) {
+    sh """
+    sleep 10
+    curl -f http://localhost:${port}
+    """
+}
+
 def deployToKubernetes(MicroService, environment) {
     def DOCKER_IMAGE = "examjenkinsdst"
     def DOCKER_TAG = "${MicroService}-v.${env.BUILD_ID}.0"
@@ -154,13 +160,5 @@ def deployToKubernetes(MicroService, environment) {
     cp exam/values.yaml values.yaml
     sed -i 's/tag:.*/tag: v.${env.BUILD_ID}.0/' values.yaml
     helm upgrade --install ${MicroService} ./${MicroService}/chart --values=values.yaml --namespace ${environment}
-    """
-}
-def testDockerImage( port) {
-   
-    // Run the specific service
-    sh """
-    curl http://localhost:${port}
-   
     """
 }
