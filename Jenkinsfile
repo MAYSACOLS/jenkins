@@ -85,7 +85,7 @@ pipeline {
                 }
             }
         }
-
+        def helmReleaseName = 'app'
         stage('Deploy to Kubernetes in dev') {
             parallel {
                 stage('Deploy Dev Kubernetes Cast Service') {
@@ -267,6 +267,17 @@ def deployToKubernetes(MicroService, environment) {
     cat $KUBECONFIG > .kube/config
     cp fastapi/values.yaml values.yml
     sed -i "s+tag.*+tag: ${DOCKER_TAG}+g" values.yml
-    helm upgrade --install app ./fastapi --values=values.yml --namespace ${environment}
+
+   // Check if Helm release already exists
+    def helmReleaseName = 'app'
+    def releaseExists = sh(script: "helm list -q ${helmReleaseName} --namespace ${environment} | wc -l", returnStatus: true).trim()
+
+    if (releaseExists == 0) {
+        // Install Helm chart if release does not exist
+        sh "helm install ${helmReleaseName} ./fastapi --values=values.yml --namespace ${environment}"
+    } else {
+        // Upgrade Helm chart if release exists
+        sh "helm upgrade ${helmReleaseName} ./fastapi --values=values.yml --namespace ${environment}"
+    }
     """
 }
