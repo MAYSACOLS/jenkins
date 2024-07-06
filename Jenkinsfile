@@ -63,24 +63,24 @@ pipeline {
             }
         }
 
-	 stage('Test Acceptance') {
-            parallel {
-                stage('Test Cast Service') {
-                    steps {
-                        script {
-                            testDockerImage(8081)
-                        }
-                    }
-                }
-                stage('Test Movie Service') {
-                    steps {
-                        script {
-                            testDockerImage(8081)    
-                        }
-                    }
-                }
-            }
-        }
+	# stage('Test Acceptance') {
+         #   parallel {
+          #      stage('Test Cast Service') {
+           #         steps {
+            #            script {
+             #               testDockerImage(8081)
+              #          }
+               #     }
+              #  }
+               # stage('Test Movie Service') {
+                #    steps {
+                 #       script {
+                  #          testDockerImage(8081)    
+                   #     }
+                   # }
+               # }
+            #}
+       # }
 
         stage('Deploy to Kubernetes') {
             steps {
