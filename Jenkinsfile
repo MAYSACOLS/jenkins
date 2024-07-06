@@ -1,169 +1,130 @@
 pipeline {
-    environment {
-        DOCKER_ID = "maysa56" // Remplacez par votre ID Docker Hub
-        DOCKER_PWD = credentials("DOCKER_HUB_PWD") // Récupération du mot de passe Docker Hub
-    }
-    agent any
-
-    stages {
-        stage('Build Docker Images') {
-            parallel {
-                stage('Build Cast Service') {
-                    steps {
-                        script {
-                            buildDockerImage("cast-service")
-                        }
-                    }
-                }
-                stage('Build Movie Service') {
-                    steps {
-                        script {
-                            buildDockerImage("movie-service")
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Push Docker Images') {
-            parallel {
-                stage('Push Cast Service') {
-                    steps {
-                        script {
-                            pushDockerImage("cast-service")
-                        }
-                    }
-                }
-                stage('Push Movie Service') {
-                    steps {
-                        script {
-                            pushDockerImage("movie-service")
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Run Docker Images') {
-            parallel {
-                stage('Run Cast Service') {
-                    steps {
-                        script {
-                            def serviceName = "cast-service"
-                            def port = 8081
-                            buildAndRunDockerImage(serviceName, port)
-                        }
-                    }
-                }
-                stage('Run Movie Service') {
-                    steps {
-                        script {
-                            def serviceName = "movie-service"
-                            def port = 8082
-                            buildAndRunDockerImage(serviceName, port)
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Test Acceptance') {
-            parallel {
-                stage('Test Cast Service') {
-                    steps {
-                        script {
-                            testDockerImage(8081)
-                        }
-                    }
-                }
-                stage('Test Movie Service') {
-                    steps {
-                        script {
-                            testDockerImage(8082)
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Deploy to Kubernetes') {
+environment { // Declaration of environment variables
+DOCKER_ID = "maysa56" // replace this with your docker-id
+DOCKER_IMAGE = "examjenkinsdst"
+DOCKER_TAG = "v.${BUILD_ID}.0" // we will tag our images with the current build in order to increment the value by 1 with each new build
+}
+agent any // Jenkins will be able to select all available agents
+stages {
+        stage(' Docker Build'){ // docker build image stage
             steps {
                 script {
-                    // Setup kubeconfig
-                    sh 'mkdir -p $HOME/.kube'
-                    sh 'cp $KUBECONFIG $HOME/.kube/config'
-
-                    // Deploy Cast Service
-                    deployToKubernetes('cast-service', 'DEV')
-                    deployToKubernetes('cast-service', 'QA')
-                    deployToKubernetes('cast-service', 'STAGING')
-                    deployToKubernetes('cast-service', 'PROD')
-
-                    // Deploy Movie Service
-                    deployToKubernetes('movie-service', 'DEV')
-                    deployToKubernetes('movie-service', 'QA')
-                    deployToKubernetes('movie-service', 'STAGING')
-                    deployToKubernetes('movie-service', 'PROD')
+                sh '''
+                 docker rm -f jenkins
+                 docker build -t $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG .
+                sleep 6
+                '''
                 }
             }
         }
-    }
+        stage('Docker run'){ // run container from our builded image
+                steps {
+                    script {
+                    sh '''
+                    docker run -d -p 80:80 --name jenkins $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
+                    sleep 10
+                    '''
+                    }
+                }
+            }
 
-    post {
-        success {
-            echo 'Pipeline succeeded!'
+        stage('Test Acceptance'){ // we launch the curl command to validate that the container responds to the request
+            steps {
+                    script {
+                    sh '''
+                    curl localhost
+                    '''
+                    }
+            }
+
         }
-        failure {
-            echo 'Pipeline failed.'
+        stage('Docker Push'){ //we pass the built image to our docker hub account
+            environment
+            {
+                DOCKER_PASS = credentials("DOCKER_HUB_PASS") // we retrieve  docker password from secret text called docker_hub_pass saved on jenkins
+            }
+
+            steps {
+
+                script {
+                sh '''
+                docker login -u $DOCKER_ID -p $DOCKER_PASS
+                docker push $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
+                '''
+                }
+            }
+
         }
-    }
+
+stage('Deploiement en dev'){
+        environment
+        {
+        KUBECONFIG = credentials("config") // we retrieve  kubeconfig from secret file called config saved on jenkins
+        }
+            steps {
+                script {
+                sh '''
+                rm -Rf .kube
+                mkdir .kube
+                ls
+                cat $KUBECONFIG > .kube/config
+                cp fastapi/values.yaml values.yml
+                cat values.yml
+                sed -i "s+tag.*+tag: ${DOCKER_TAG}+g" values.yml
+                helm upgrade --install app fastapi --values=values.yml --namespace dev
+                '''
+                }
+            }
+
+        }
+stage('Deploiement en staging'){
+        environment
+        {
+        KUBECONFIG = credentials("config") // we retrieve  kubeconfig from secret file called config saved on jenkins
+        }
+            steps {
+                script {
+                sh '''
+                rm -Rf .kube
+                mkdir .kube
+                ls
+                cat $KUBECONFIG > .kube/config
+                cp fastapi/values.yaml values.yml
+                cat values.yml
+                sed -i "s+tag.*+tag: ${DOCKER_TAG}+g" values.yml
+                helm upgrade --install app fastapi --values=values.yml --namespace staging
+                '''
+                }
+            }
+
+        }
+  stage('Deploiement en prod'){
+        environment
+        {
+        KUBECONFIG = credentials("config") // we retrieve  kubeconfig from secret file called config saved on jenkins
+        }
+            steps {
+            // Create an Approval Button with a timeout of 15minutes.
+            // this require a manuel validation in order to deploy on production environment
+                    timeout(time: 15, unit: "MINUTES") {
+                        input message: 'Do you want to deploy in production ?', ok: 'Yes'
+                    }
+
+                script {
+                sh '''
+                rm -Rf .kube
+                mkdir .kube
+                ls
+                cat $KUBECONFIG > .kube/config
+                cp fastapi/values.yaml values.yml
+                cat values.yml
+                sed -i "s+tag.*+tag: ${DOCKER_TAG}+g" values.yml
+                helm upgrade --install app fastapi --values=values.yml --namespace prod
+                '''
+                }
+            }
+
+        }
+
 }
-
-def buildDockerImage(MicroService) {
-    def DOCKER_IMAGE = "examjenkinsdst"
-    def DOCKER_TAG = "${MicroService}-v.${env.BUILD_ID}.0"
-
-    sh """
-    docker build -t $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG ./$MicroService
-    """
-}
-
-def pushDockerImage(MicroService) {
-    def DOCKER_IMAGE = "examjenkinsdst"
-    def DOCKER_TAG = "${MicroService}-v.${env.BUILD_ID}.0"
-
-    sh """
-    echo "$DOCKER_PWD" | docker login -u "$DOCKER_ID" --password-stdin
-    docker push $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
-    """
-}
-
-def buildAndRunDockerImage(MicroService, port) {
-    def DOCKER_IMAGE = "examjenkinsdst"
-    def DOCKER_TAG = "${MicroService}-v.${env.BUILD_ID}.0"
-
-    sh """
-    docker rm -f ${MicroService} || true
-    docker build -t $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG ./$MicroService
-    docker run -d -p ${port}:80 --name ${MicroService} $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
-    sleep 10
-    """
-}
-
-def testDockerImage(port) {
-    sh """
-    sleep 10
-    curl -f http://localhost:${port}
-    """
-}
-
-def deployToKubernetes(MicroService, environment) {
-    def DOCKER_IMAGE = "examjenkinsdst"
-    def DOCKER_TAG = "${MicroService}-v.${env.BUILD_ID}.0"
-
-    sh """
-    cp exam/values.yaml values.yaml
-    sed -i 's/tag:.*/tag: v.${env.BUILD_ID}.0/' values.yaml
-    helm upgrade --install ${MicroService} ./${MicroService}/chart --values=values.yaml --namespace ${environment}
-    """
 }
