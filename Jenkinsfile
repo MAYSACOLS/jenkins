@@ -94,7 +94,7 @@ pipeline {
                         }
                     }
                 }
-                stage('dev Movie Service') {
+               /* stage('dev Movie Service') {
                     steps {
                         script {
                             withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
@@ -102,7 +102,7 @@ pipeline {
                             }
                         }
                     }
-                }
+                }*/
             }
         }
 
@@ -117,7 +117,7 @@ pipeline {
                         }
                     }
                 }
-                stage('qa Movie Service') {
+                 /* stage('qa Movie Service') {
                     steps {
                         script {
                             withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
@@ -125,7 +125,7 @@ pipeline {
                             }
                         }
                     }
-                }
+                }*/
             }
        }
 
@@ -140,7 +140,7 @@ pipeline {
                         }
                     }
                 }
-                stage('qa Movie Service') {
+                 /* stage('qa Movie Service') {
                     steps {
                         script {
                             withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
@@ -148,7 +148,7 @@ pipeline {
                             }
                         }
                     }
-                }
+                }*/
             }
        }
 
@@ -166,7 +166,7 @@ pipeline {
                         }
                     }
                 }
-                stage('qa Movie Service') {
+                 /* stage('qa Movie Service') {
                     steps {
                             timeout(time: 15, unit:"MINUTES"){
                                     imput message : 'voulez-vous déployer Movie Service en prod ?', ok:'Oui'
@@ -177,7 +177,7 @@ pipeline {
                             }
                         }
                     }
-                }
+                }*/
             }
 }
 
