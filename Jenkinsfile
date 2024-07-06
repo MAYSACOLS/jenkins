@@ -235,9 +235,10 @@ cp \${KUBECONFIG} \$HOME/.kube/config
 """
 
 // Copy Helm values file and update image tag
+    // sed -i 's+tag.*+tag: \${DOCKER_TAG}+g' values.yml
 sh """
 cp fastapi/values.yaml values.yml
-sed -i 's+tag.*+tag: \${DOCKER_TAG}+g' values.yml
+
 helm upgrade ${HELM_RELEASE_NAME} ./fastapi --values=values.yml --namespace ${environment}
 """
 
