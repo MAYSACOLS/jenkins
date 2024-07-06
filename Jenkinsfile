@@ -1,7 +1,7 @@
 pipeline {
     environment {
         DOCKER_ID = "maysa56" // Remplacez par votre ID Docker Hub
-        DOCKER_PASS = credentials("DOCKER_HUB_PASS") // On récupère le mot de passe Docker Hub à partir du secret texte appelé docker_hub_pass enregistré dans Jenkins
+        DOCKER_PASS = credentials("DOCKER_HUB_PWD") // On récupère le mot de passe Docker Hub à partir du secret texte appelé docker_hub_pass enregistré dans Jenkins
     }
     agent any
 
@@ -129,7 +129,8 @@ def pushDockerImage(MicroService) {
     def DOCKER_TAG = "${MicroService}-v.${env.BUILD_ID}.0"
 
     sh """
-    docker login -u $DOCKER_ID -p $DOCKER_PASS
+   docker login -u maysa56 -p D@t@scientest_2024;
+   # docker login -u $DOCKER_ID -p $DOCKER_PASS
     docker push $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
     """
 }
