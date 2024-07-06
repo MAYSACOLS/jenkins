@@ -5,7 +5,6 @@ pipeline {
         KUBECONFIG = credentials("config")
     }
     agent any
-
     stages {
         stage('Build Docker Images') {
             parallel {
@@ -26,26 +25,7 @@ pipeline {
             }
         }
 
-        stage('Push Docker Images') {
-            parallel {
-                stage('Push Cast Service') {
-                    steps {
-                        script {
-                            pushDockerImage("cast-service")
-                        }
-                    }
-                }
-                stage('Push Movie Service') {
-                    steps {
-                        script {
-                            pushDockerImage("movie-service")
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Run Docker Images') {
+    stage('Run Docker Images') {
             parallel {
                 stage('Run Cast Service') {
                     steps {
@@ -68,7 +48,7 @@ pipeline {
             }
         }
 
-        stage('Test Acceptance') {
+ stage('Test Acceptance') {
             parallel {
                 stage('Test Cast Service') {
                     steps {
@@ -81,6 +61,25 @@ pipeline {
                     steps {
                         script {
                             testDockerImage(8082)
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Push Docker Images') {
+            parallel {
+                stage('Push Cast Service') {
+                    steps {
+                        script {
+                            pushDockerImage("cast-service")
+                        }
+                    }
+                }
+                stage('Push Movie Service') {
+                    steps {
+                        script {
+                            pushDockerImage("movie-service")
                         }
                     }
                 }
