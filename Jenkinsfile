@@ -44,25 +44,6 @@ pipeline {
             }
         }
 
-        stage('Test Acceptance') {
-            parallel {
-                stage('Test Cast Service') {
-                    steps {
-                        script {
-                            sh 'curl localhost:8081' // Port spécifique pour cast-service
-                        }
-                    }
-                }
-                stage('Test Movie Service') {
-                    steps {
-                        script {
-                            sh 'curl localhost:8082' // Port spécifique pour movie-service
-                        }
-                    }
-                }
-            }
-        }
-
         stage('Run Docker Images') {
             parallel {
                 stage('Run Cast Service') {
@@ -76,6 +57,25 @@ pipeline {
                     steps {
                         script {
                             runDockerImage("movie-service", 8082)
+                        }
+                    }
+                }
+            }
+        }
+
+	 stage('Test Acceptance') {
+            parallel {
+                stage('Test Cast Service') {
+                    steps {
+                        script {
+                            sh 'curl localhost:8081' // Port spécifique pour cast-service
+                        }
+                    }
+                }
+                stage('Test Movie Service') {
+                    steps {
+                        script {
+                            sh 'curl localhost:8082' // Port spécifique pour movie-service
                         }
                     }
                 }
