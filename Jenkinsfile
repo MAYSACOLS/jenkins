@@ -141,13 +141,11 @@ def runDockerImage(MicroService, port) {
     sh """
     docker rm -f ${MicroService} || true
     docker run -d -p ${port}:80 --name ${MicroService} $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
-    sleep 10
     """
 }
 
 def testDockerImage(port) {
     sh """
-    sleep 10
     curl -f http://localhost:${port}
     """
 }
