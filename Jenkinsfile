@@ -3,6 +3,7 @@ pipeline {
         DOCKER_ID = "maysa56" // Remplacez par votre ID Docker Hub
         DOCKER_PWD = credentials("DOCKER_HUB_PWD") // Récupération du mot de passe Docker Hub
         KUBECONFIG = credentials("config")
+        HELM_RELEASE_NAME = 'app'
     }
     agent any
     stages {
@@ -85,123 +86,45 @@ pipeline {
                 }
             }
         }
-        def helmReleaseName = 'app'
-        stage('Deploy to Kubernetes in dev') {
+
+        stage('Deploy to Kubernetes') {
             parallel {
-                stage('Deploy Dev Kubernetes Cast Service') {
+                stage('Deploy to Kubernetes in dev') {
                     steps {
                         script {
-                            // Setup kubeconfig
-                            sh 'mkdir -p $HOME/.kube'
-                            sh 'cp $KUBECONFIG $HOME/.kube/config'
-
-                            // Deploy Cast Service
-                            deployToKubernetes('cast-service', 'dev')
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('cast-service', 'dev')
+                            }
                         }
                     }
                 }
-                stage('Deploy Dev Kubernetes Movie Service') {
+                stage('Deploy to Kubernetes in qa') {
                     steps {
                         script {
-                            // Setup kubeconfig
-                            sh 'mkdir -p $HOME/.kube'
-                            sh 'cp $KUBECONFIG $HOME/.kube/config'
-
-                            // Deploy Movie Service
-                            deployToKubernetes('movie-service', 'dev')
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('movie-service', 'qa')
+                            }
                         }
                     }
                 }
-            }
-        }
-
-        stage('Deploy to Kubernetes in qa') {
-            parallel {
-                stage('Deploy qa Kubernetes Cast Service') {
+                stage('Deploy to Kubernetes in staging') {
                     steps {
                         script {
-                            // Setup kubeconfig
-                            sh 'mkdir -p $HOME/.kube'
-                            sh 'cp $KUBECONFIG $HOME/.kube/config'
-
-                            // Deploy Cast Service
-                            deployToKubernetes('cast-service', 'qa')
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('cast-service', 'staging')
+                            }
                         }
                     }
                 }
-                stage('Deploy qa Kubernetes Movie Service') {
+                stage('Deploy to Kubernetes in prod') {
                     steps {
                         script {
-                            // Setup kubeconfig
-                            sh 'mkdir -p $HOME/.kube'
-                            sh 'cp $KUBECONFIG $HOME/.kube/config'
-
-                            // Deploy Movie Service
-                            deployToKubernetes('movie-service', 'qa')
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Deploy to Kubernetes in staging') {
-            parallel {
-                stage('Deploy staging Kubernetes Cast Service') {
-                    steps {
-                        script {
-                            // Setup kubeconfig
-                            sh 'mkdir -p $HOME/.kube'
-                            sh 'cp $KUBECONFIG $HOME/.kube/config'
-
-                            // Deploy Cast Service
-                            deployToKubernetes('cast-service', 'staging')
-                        }
-                    }
-                }
-                stage('Deploy staging Kubernetes Movie Service') {
-                    steps {
-                        script {
-                            // Setup kubeconfig
-                            sh 'mkdir -p $HOME/.kube'
-                            sh 'cp $KUBECONFIG $HOME/.kube/config'
-
-                            // Deploy Movie Service
-                            deployToKubernetes('movie-service', 'staging')
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Deploy to Kubernetes in prod') {
-            parallel {
-                stage('Deploy prod Kubernetes Cast Service') {
-                    steps {
-                        timeout(time: 15, unit: "MINUTES") {
-                            input message: 'Voulez-vous déployer en prod ?', ok: 'Yes'
-                        }
-                        script {
-                            // Setup kubeconfig
-                            sh 'mkdir -p $HOME/.kube'
-                            sh 'cp $KUBECONFIG $HOME/.kube/config'
-
-                            // Deploy Cast Service
-                            deployToKubernetes('cast-service', 'prod')
-                        }
-                    }
-                }
-                stage('Deploy prod Kubernetes Movie Service') {
-                    steps {
-                        timeout(time: 15, unit: "MINUTES") {
-                            input message: 'Voulez-vous déployer en prod ?', ok: 'Yes'
-                        }
-                        script {
-                            // Setup kubeconfig
-                            sh 'mkdir -p $HOME/.kube'
-                            sh 'cp $KUBECONFIG $HOME/.kube/config'
-
-                            // Deploy Movie Service
-                            deployToKubernetes('movie-service', 'prod')
+                            timeout(time: 15, unit: "MINUTES") {
+                                input message: 'Voulez-vous déployer en prod ?', ok: 'Yes'
+                            }
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('movie-service', 'prod')
+                            }
                         }
                     }
                 }
@@ -250,34 +173,30 @@ def buildAndRunDockerImage(MicroService, port) {
     """
 }
 
-def testDockerImage(port) {
-    sh """
-    sleep 10
-    curl -f http://localhost:${port}
-    """
-}
-
 def deployToKubernetes(MicroService, environment) {
     def DOCKER_IMAGE = "examjenkinsdst"
     def DOCKER_TAG = "${MicroService}-v.${env.BUILD_ID}.0"
 
+    // Copy kubeconfig file securely
     sh """
-    rm -Rf .kube
-    mkdir .kube
-    cat $KUBECONFIG > .kube/config
-    cp fastapi/values.yaml values.yml
-    sed -i "s+tag.*+tag: ${DOCKER_TAG}+g" values.yml
+    mkdir -p $HOME/.kube
+    cp ${KUBECONFIG} $HOME/.kube/config
+    """
 
-   // Check if Helm release already exists
-    def helmReleaseName = 'app'
-    def releaseExists = sh(script: "helm list -q ${helmReleaseName} --namespace ${environment} | wc -l", returnStatus: true).trim()
+    // Copy Helm values file and update image tag
+    sh """
+    cp fastapi/values.yaml values.yml
+    sed -i 's+tag.*+tag: ${DOCKER_TAG}+g' values.yml
+    """
+
+    // Check if Helm release already exists
+    def releaseExists = sh(script: "helm list -q ${HELM_RELEASE_NAME} --namespace ${environment} | wc -l", returnStatus: true).trim()
 
     if (releaseExists == 0) {
         // Install Helm chart if release does not exist
-        sh "helm install ${helmReleaseName} ./fastapi --values=values.yml --namespace ${environment}"
+        sh "helm install ${HELM_RELEASE_NAME} ./fastapi --values=values.yml --namespace ${environment}"
     } else {
         // Upgrade Helm chart if release exists
-        sh "helm upgrade ${helmReleaseName} ./fastapi --values=values.yml --namespace ${environment}"
+        sh "helm upgrade ${HELM_RELEASE_NAME} ./fastapi --values=values.yml --namespace ${environment}"
     }
-    """
 }
