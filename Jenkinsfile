@@ -106,7 +106,80 @@ pipeline {
             }
         }
 
-        
+        stage('Deploy qa') {
+            parallel {
+                stage('qa Cast Service') {
+                    steps {
+                        script {
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('cast-service', 'qa')
+                            }
+                        }
+                    }
+                }
+                stage('qa Movie Service') {
+                    steps {
+                        script {
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('movie-service', 'qa')
+                            }
+                        }
+                    }
+                }
+            }
+       }
+
+       stage('Deploy staging') {
+            parallel {
+                stage('staging Cast Service') {
+                    steps {
+                        script {
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('cast-service', 'staging')
+                            }
+                        }
+                    }
+                }
+                stage('qa Movie Service') {
+                    steps {
+                        script {
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('movie-service', 'staging')
+                            }
+                        }
+                    }
+                }
+            }
+       }
+
+         stage('Deploy prod') {
+            parallel {
+                stage('prod Cast Service') {
+                    steps {  
+                                timeout(time: 15, unit:"MINUTES"){
+                                    imput message : 'voulez-vous déployer Cast Service en prod ?', ok:'Oui'
+                            }
+                        script {
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('cast-service', 'prod')
+                            }
+                        }
+                    }
+                }
+                stage('qa Movie Service') {
+                    steps {
+                            timeout(time: 15, unit:"MINUTES"){
+                                    imput message : 'voulez-vous déployer Movie Service en prod ?', ok:'Oui'
+                            }
+                        script {
+                            withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                                deployToKubernetes('movie-service', 'prod')
+                            }
+                        }
+                    }
+                }
+            }
+}
 
     }
 
@@ -165,16 +238,7 @@ def deployToKubernetes(MicroService, environment) {
     sh """
     cp fastapi/values.yaml values.yml
     sed -i 's+tag.*+tag: ${DOCKER_TAG}+g' values.yml
+     sh "helm upgrade ${HELM_RELEASE_NAME} ./fastapi --values=values.yml --namespace ${environment}"
     """
 
-    // Check if Helm release already exists
-    def releaseExists = sh(script: "helm list -q ${HELM_RELEASE_NAME} --namespace ${environment} | wc -l", returnStatus: true).trim()
-
-    if (releaseExists == 0) {
-        // Install Helm chart if release does not exist
-        sh "helm install ${HELM_RELEASE_NAME} ./fastapi --values=values.yml --namespace ${environment}"
-    } else {
-        // Upgrade Helm chart if release exists
-        sh "helm upgrade ${HELM_RELEASE_NAME} ./fastapi --values=values.yml --namespace ${environment}"
-    }
 }
