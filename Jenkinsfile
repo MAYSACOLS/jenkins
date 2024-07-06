@@ -228,17 +228,17 @@ def deployToKubernetes(MicroService, environment) {
     def DOCKER_IMAGE = "examjenkinsdst"
     def DOCKER_TAG = "${MicroService}-v.${env.BUILD_ID}.0"
 
-    // Copy kubeconfig file securely
-    sh """
-    mkdir -p $HOME/.kube
-    cp ${KUBECONFIG} $HOME/.kube/config
-    """
+ // Copy kubeconfig file securely
+sh """
+mkdir -p \$HOME/.kube
+cp \${KUBECONFIG} \$HOME/.kube/config
+"""
 
-    // Copy Helm values file and update image tag
-    sh """
-    cp fastapi/values.yaml values.yml
-    sed -i 's+tag.*+tag: ${DOCKER_TAG}+g' values.yml
-     sh "helm upgrade ${HELM_RELEASE_NAME} ./fastapi --values=values.yml --namespace ${environment}"
-    """
+// Copy Helm values file and update image tag
+sh """
+cp fastapi/values.yaml values.yml
+sed -i 's+tag.*+tag: \${DOCKER_TAG}+g' values.yml
+helm upgrade ${HELM_RELEASE_NAME} ./fastapi --values=values.yml --namespace ${environment}
+"""
 
 }
